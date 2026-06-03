@@ -1,0 +1,12 @@
+# Visual Studio / MSBuild build output
+[Bb]in/
+[Oo]bj/
+x64/
+Win32/
+Debug/
+Release/
+
+# Visual Studio working files
+.vs/
+*.suo
+*.user

@@ -1,0 +1,501 @@
+#include "SDL.h"
+#include <stdio.h>
+
+#include "triangle.h"
+#include "vector.h"
+#include "colour.h"
+
+#include <cfloat>
+#include <cmath>
+#include <vector>
+
+#define M_PI 3.1415926535
+
+static const int MAX_REFLECT = 5;
+static const double MIN_LFACTOR = 0.05;
+
+std::vector<Triangle> geometry;
+std::vector<Vector> lights;
+Vector move;
+int x_accel = 0;
+int z_accel = 0;
+double theta = 0;
+double phi = 0;
+
+void createGeometry()
+{
+	// Front wall
+	geometry.push_back(
+		Triangle(
+			Vector(-250, -500, 250),
+			Vector(-250, 10, 250),
+			Vector(250, 10, 250),
+			0xFF999900u
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(-250, -500, 250),
+			Vector(250, -500, 250),
+			Vector(250, 10, 250),
+			0xFF999900u
+		)
+	);
+	
+	// Back wall
+	geometry.push_back(
+		Triangle(
+			Vector(-250, -500, -250),
+			Vector(-250, 10, -250),
+			Vector(250, 10, -250),
+			0xFF999900u
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(-250, -500, -250),
+			Vector(250, -500, -250),
+			Vector(250, 10, -250),
+			0xFF999900u
+		)
+	);
+	
+	// Left wall
+	geometry.push_back(
+		Triangle(
+			Vector(-250, -500, 250),
+			Vector(-250, 10, 250),
+			Vector(-250, 10, -250),
+			0xFF999900u
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(-250, -500, 250),
+			Vector(-250, -500, -250),
+			Vector(-250, 10, -250),
+			0xFF999900u
+		)
+	);
+	
+	// Right wall
+	geometry.push_back(
+		Triangle(
+			Vector(250, -500, 250),
+			Vector(250, 10, 250),
+			Vector(250, 10, -250),
+			0xFF999900u
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(250, -500, 250),
+			Vector(250, -500, -250),
+			Vector(250, 10, -250),
+			0xFF999900u
+		)
+	);
+	
+	// Floor	
+	geometry.push_back(
+		Triangle(
+			Vector(-250, 0, -250),
+			Vector(-250, 0, 250),
+			Vector(250, 0, 250),
+			0x33222200u,
+			true,
+			0.1
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(250, 0, 250),
+			Vector(250, 0, -250),
+			Vector(-250, 0, -250),
+			0x33222200u,
+			true,
+			0.1
+		)
+	);
+	
+	// Ceiling
+	geometry.push_back(
+		Triangle(
+			Vector(-250, -500, -250),
+			Vector(-250, -500, 250),
+			Vector(250, -500, 250),
+			0xFFCCCC00u
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(250, -500, 250),
+			Vector(250, -500, -250),
+			Vector(-250, -500, -250),
+			0xFFCCCC00u
+		)
+	);
+	
+	// chandelier
+	geometry.push_back(
+		Triangle(
+			Vector(40, -500, 100),
+			Vector(0, -480, 140),
+			Vector(40, -500, 180),
+			0xFFFF9900u
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(-40, -500, 100),
+			Vector(0, -480, 140),
+			Vector(-40, -500, 180),
+			0xFFFF9900u
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(40, -500, 100),
+			Vector(0, -480, 140),
+			Vector(-40, -500, 100),
+			0xFFFF9900u
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(40, -500, 180),
+			Vector(0, -480, 140),
+			Vector(-40, -500, 180),
+			0xFFFF9900u
+		)
+	);
+	
+	// Mirror
+	geometry.push_back(
+		Triangle(
+			Vector(150, -400, 240),
+			Vector(150, 0, 240),
+			Vector(50, 0, 240),
+			0x0000ff00u,
+			true,
+			0.9
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(150, -400, 240),
+			Vector(50, -400, 240),
+			Vector(50, 0, 240),
+			0x0000ff00u,
+			true,
+			0.9
+		)
+	);
+	
+	// Enemy
+	geometry.push_back(
+		Triangle(
+			Vector(100, 0, 100),
+			Vector(120, -250, 80),
+			Vector(140, -250, 60),
+			0x00000000u,
+			false,
+			0,
+			true
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(140, -250, 60),
+			Vector(120, 0, 80),
+			Vector(100, 0, 100),
+			0x00000000u,
+			false,
+			0,
+			true
+		)
+	);
+	
+	geometry.push_back(
+		Triangle(
+			Vector(115.5, -220, 85.5),
+			Vector(125.5, -230, 75.5),
+			Vector(135.5, -220, 65.5),
+			0xff000000u,
+			false,
+			0,
+			true,
+			true
+		)
+	);
+	
+	lights.push_back(Vector(-240, -400, -220));
+}
+
+void updateGeometry()
+{
+	move += Vector(x_accel * cos(theta) - z_accel * sin(theta), 0, x_accel * sin(theta) + z_accel * cos(theta))*5;
+}
+
+double getLighting(const Vector& loc, const Vector& normal, bool reflected = false)
+{
+	Ray ray = Ray(loc, Vector(0, 0, 0));
+	
+	double ret = 0;
+	Vector temp;
+	Vector normal_vec;
+	
+	for (auto i = lights.begin(); i != lights.end(); ++i)
+	{
+		ray.direction = *i - loc;
+		normal_vec = ray.direction; normal_vec.normalise();
+		ray.start = loc + normal_vec;
+
+		bool hit = false;
+		double t;
+		Colour colour;
+		
+		for (auto i = geometry.begin(); i != geometry.end(); ++i)
+		{
+			if (!i->invisible || reflected)
+			{
+				if (i->getIntersection(ray, temp, t, colour))
+				{
+					if (t < 1) {hit = true; break;}
+				}
+			}
+		}
+		
+		if (!hit) {ret += fabs(normal_vec.dotprod(normal));}
+	}
+
+	return ret;
+}
+
+bool getClosestIntersect(const Ray& ray, Colour& colour, int reflectcount = 0, double l_factor = 1)
+{
+	double closest_t = DBL_MAX;
+	Vector loc;
+	Vector new_loc;
+	Vector normal;
+	double t;
+	Colour new_colour;
+	bool ret = false;
+	bool reflective = false;
+	double reflectivity = 0;
+	bool glows = false;
+	
+	for (auto i = geometry.begin(); i != geometry.end(); ++i)
+	{
+		if (!i->invisible || reflectcount > 0)
+		{
+			if (i->getIntersection(ray, new_loc, t, new_colour))
+			{
+				if (t < closest_t)
+				{
+					closest_t = t;
+					colour = new_colour;
+					loc = new_loc;
+					normal = i->getNormal();
+					ret = true;
+					reflective = i->reflective;
+					reflectivity = i->reflectivity;
+					glows = i->glows;
+				}
+			}
+		}
+	}
+	
+	if (ret)
+	{
+		if (reflective && reflectcount < MAX_REFLECT && l_factor > MIN_LFACTOR)
+		{
+			double l = 1;
+			if (!glows) {l = 0.2 + 0.8 * getLighting(loc, normal, reflectcount > 0);}
+
+			l *= l_factor;
+			colour *= l;
+			
+			Vector v = ray.direction; v.normalise();
+			Ray reflect_ray = Ray(loc, v -  normal * 2 * v.dotprod(normal));
+			reflect_ray.start += reflect_ray.direction;
+			
+			getClosestIntersect(reflect_ray, new_colour, reflectcount + 1, reflectivity * l_factor);
+			colour *= 1 - reflectivity;
+			colour += new_colour;
+		}
+		else
+		{
+			double l = 1;
+			if (!glows) {l = 0.2 + 0.8 * getLighting(loc, normal, reflectcount > 0);}
+			
+			l *= l_factor;
+			colour *= l;
+		}
+	}
+	
+	return ret;
+}
+
+void changeDisplay(SDL_Surface* screen, unsigned int width, unsigned int height)
+{
+	double dist = 3;
+	Vector origin = Vector(0, -250, -240) + move;
+	Ray ray = Ray(origin, Vector(0, 0, 0));
+	Vector forward = Vector(0, 0, dist);
+	Vector up = Vector(0, 6, 0);
+	Vector right = Vector(8, 0, 0);
+	
+	forward.rotateAroundX(phi);
+	up.rotateAroundX(phi);
+	right.rotateAroundX(phi);
+	
+	forward.rotateAroundY(theta);
+	up.rotateAroundY(theta);
+	right.rotateAroundY(theta);
+	
+	Colour colour;
+	
+	if (SDL_MUSTLOCK(screen)) {SDL_LockSurface(screen);}
+	uint32_t* pixels = (uint32_t*) screen->pixels;
+	
+	for (unsigned int i = 0; i < height; ++i)
+	{
+		for (unsigned int j = 0; j < width; ++j)
+		{
+			ray.direction = right * ((j / double(width - 1)) - 0.5) + up * ((i / double(height - 1)) - 0.5) + forward;
+			ray.direction.normalise();
+			
+			if (!getClosestIntersect(ray, colour)) {colour = 0x00000000u;}
+			
+			*pixels++ = colour.convertTo32();
+		}
+	}
+	
+	if (SDL_MUSTLOCK(screen)) {SDL_UnlockSurface(screen);}
+}
+
+int main(int argc, char** argv)
+{    
+    SDL_Surface* screen;
+	SDL_Surface* screen_backbuf;
+	SDL_Surface* backbuf;
+
+    /* Initialize the SDL library */
+    if( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
+        fprintf(stderr,
+                "Couldn't initialize SDL: %s\n", SDL_GetError());
+        exit(1);
+    }
+    
+    unsigned int width = 1600;
+	unsigned int height = 900;
+	
+	unsigned int backbuf_width = 320;
+	unsigned int backbuf_height = 240;
+	
+	int scale_width = width / backbuf_width;
+	int scale_height = height / backbuf_height;
+	
+    screen = SDL_SetVideoMode(width, height, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN);
+	screen_backbuf = SDL_CreateRGBSurface(SDL_HWSURFACE, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
+	backbuf = SDL_CreateRGBSurface(SDL_SWSURFACE, backbuf_width, backbuf_height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
+    if ( screen == NULL ) {
+        fprintf(stderr, "Couldn't set 640x480x8 video mode: %s\n",
+                        SDL_GetError());
+        exit(1);
+    }
+	
+	SDL_ShowCursor(0);
+	SDL_WM_GrabInput(SDL_GRAB_ON);
+	
+	createGeometry();
+	
+	bool quit = false;
+	
+	while (!quit)
+	{
+		SDL_Event event;
+		
+		{
+			while(SDL_PollEvent(&event))
+			{
+				if (event.type == SDL_KEYDOWN)
+				{
+					if (event.key.keysym.sym == SDLK_ESCAPE) {quit = true;}
+					if (event.key.keysym.sym == SDLK_a) {--x_accel;}
+					if (event.key.keysym.sym == SDLK_d) {++x_accel;}
+					if (event.key.keysym.sym == SDLK_w) {++z_accel;}
+					if (event.key.keysym.sym == SDLK_s)	{--z_accel;}
+				}
+				
+				if (event.type == SDL_KEYUP)
+				{
+					if (event.key.keysym.sym == SDLK_a)	{++x_accel;}
+					if (event.key.keysym.sym == SDLK_d)	{--x_accel;}
+					if (event.key.keysym.sym == SDLK_w) {--z_accel;}
+					if (event.key.keysym.sym == SDLK_s)	{++z_accel;}
+				}
+				
+				if (event.type == SDL_QUIT) {quit = true;}
+				
+				if (event.type == SDL_MOUSEMOTION)
+				{
+					theta -= event.motion.xrel / 1000.0;
+					phi -= event.motion.yrel / 1000.0;
+					if (phi > M_PI / 2.0) {phi = M_PI / 2.0;}
+					if (phi < -M_PI / 2.0) {phi = -M_PI / 2.0;}
+				}
+			}
+		}
+	
+		updateGeometry();
+		changeDisplay(backbuf, backbuf_width, backbuf_height);
+		
+		if (SDL_MUSTLOCK(screen_backbuf)) {SDL_LockSurface(screen_backbuf);}
+		if (SDL_MUSTLOCK(backbuf)) {SDL_LockSurface(backbuf);}
+		
+		uint32_t* source = (uint32_t*)backbuf->pixels;
+		uint32_t* dest = (uint32_t*)screen_backbuf->pixels;
+
+		for (unsigned int i = 0; i < backbuf_height; ++i)
+		{
+			for (unsigned int j = 0; j < backbuf_width; ++j)
+			{
+				for (int n = 0; n < scale_width; ++n)
+				{
+					for (int m = 0; m < scale_height; ++m)
+					{
+						dest[m * width] = *source;
+					}
+
+					++dest;
+				}
+				
+				++source;
+			}
+			
+			dest += width * (scale_height - 1);
+		}
+		
+		if (SDL_MUSTLOCK(backbuf)) {SDL_UnlockSurface(backbuf);}
+		if (SDL_MUSTLOCK(screen_backbuf)) {SDL_UnlockSurface(screen_backbuf);}
+		
+		SDL_BlitSurface(screen_backbuf, NULL, screen, NULL);		
+		SDL_Flip(screen);
+	}
+	
+	SDL_Quit();
+	return 0;
+}
