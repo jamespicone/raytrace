@@ -440,7 +440,7 @@ int main(int argc, char** argv)
 		{
 			while(SDL_PollEvent(&event))
 			{
-				if (event.type == SDL_KEYDOWN)
+				if (event.type == SDL_KEYDOWN && event.key.repeat == 0)
 				{
 					if (event.key.keysym.sym == SDLK_ESCAPE) {quit = true;}
 					if (event.key.keysym.sym == SDLK_a) {--x_accel;}
