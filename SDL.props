@@ -15,6 +15,10 @@
       <AdditionalLibraryDirectories>$(MSBuildThisFileDirectory)SDL2-2.0.10\lib\$(SdlArch);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <SubSystem>Console</SubSystem>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y /D "$(MSBuildThisFileDirectory)SDL2-2.0.10\lib\$(SdlArch)\SDL2.dll" "$(OutDir)"</Command>
+      <Message>Copying SDL2.dll to output directory</Message>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>

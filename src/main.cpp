@@ -9,7 +9,9 @@
 #include <cmath>
 #include <vector>
 
+#ifndef M_PI
 #define M_PI 3.1415926535
+#endif
 
 static const int MAX_REFLECT = 5;
 static const double MIN_LFACTOR = 0.05;
@@ -387,7 +389,8 @@ void changeDisplay(SDL_Surface* screen, unsigned int width, unsigned int height)
 }
 
 int main(int argc, char** argv)
-{    
+{
+	SDL_Window* window;
     SDL_Surface* screen;
 	SDL_Surface* screen_backbuf;
 	SDL_Surface* backbuf;
@@ -398,27 +401,33 @@ int main(int argc, char** argv)
                 "Couldn't initialize SDL: %s\n", SDL_GetError());
         exit(1);
     }
-    
+
     unsigned int width = 1600;
 	unsigned int height = 900;
-	
+
 	unsigned int backbuf_width = 320;
 	unsigned int backbuf_height = 240;
-	
+
 	int scale_width = width / backbuf_width;
 	int scale_height = height / backbuf_height;
-	
-    screen = SDL_SetVideoMode(width, height, 32, SDL_HWSURFACE | SDL_DOUBLEBUF | SDL_FULLSCREEN);
-	screen_backbuf = SDL_CreateRGBSurface(SDL_HWSURFACE, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
-	backbuf = SDL_CreateRGBSurface(SDL_SWSURFACE, backbuf_width, backbuf_height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
-    if ( screen == NULL ) {
-        fprintf(stderr, "Couldn't set 640x480x8 video mode: %s\n",
-                        SDL_GetError());
+
+	window = SDL_CreateWindow("mirrorhouse",
+		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+		width, height, 0);
+    if ( window == NULL ) {
+        fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
         exit(1);
     }
-	
+	screen = SDL_GetWindowSurface(window);
+	screen_backbuf = SDL_CreateRGBSurface(0, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
+	backbuf = SDL_CreateRGBSurface(0, backbuf_width, backbuf_height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
+    if ( screen == NULL ) {
+        fprintf(stderr, "Couldn't get window surface: %s\n", SDL_GetError());
+        exit(1);
+    }
+
 	SDL_ShowCursor(0);
-	SDL_WM_GrabInput(SDL_GRAB_ON);
+	SDL_SetRelativeMouseMode(SDL_TRUE);
 	
 	createGeometry();
 	
@@ -492,10 +501,11 @@ int main(int argc, char** argv)
 		if (SDL_MUSTLOCK(backbuf)) {SDL_UnlockSurface(backbuf);}
 		if (SDL_MUSTLOCK(screen_backbuf)) {SDL_UnlockSurface(screen_backbuf);}
 		
-		SDL_BlitSurface(screen_backbuf, NULL, screen, NULL);		
-		SDL_Flip(screen);
+		SDL_BlitSurface(screen_backbuf, NULL, screen, NULL);
+		SDL_UpdateWindowSurface(window);
 	}
-	
+
+	SDL_DestroyWindow(window);
 	SDL_Quit();
 	return 0;
 }

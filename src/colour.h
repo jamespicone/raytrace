@@ -30,9 +30,9 @@ struct Colour
 	Colour operator*(double factor) const
 	{
 		return Colour(
-			std::min(std::max(red * factor, 0.0), 255.0),
-			std::min(std::max(blue * factor, 0.0), 255.0),
-			std::min(std::max(green * factor, 0.0), 255.0)
+			static_cast<uint8_t>(std::min(std::max(red * factor, 0.0), 255.0)),
+			static_cast<uint8_t>(std::min(std::max(blue * factor, 0.0), 255.0)),
+			static_cast<uint8_t>(std::min(std::max(green * factor, 0.0), 255.0))
 		);
 	}
 	
