@@ -441,8 +441,8 @@ int main(int argc, char** argv)
     unsigned int width = 1600;
 	unsigned int height = 900;
 
-	unsigned int backbuf_width = 320;
-	unsigned int backbuf_height = 240;
+	unsigned int backbuf_width = 640;
+	unsigned int backbuf_height = 360;
 
 	window = SDL_CreateWindow("mirrorhouse",
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
