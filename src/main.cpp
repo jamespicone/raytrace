@@ -461,9 +461,13 @@ int main(int argc, char** argv)
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 	
 	createGeometry();
-	
+
 	bool quit = false;
-	
+
+	Uint64 perf_freq = SDL_GetPerformanceFrequency();
+	Uint64 fps_timer = SDL_GetPerformanceCounter();
+	unsigned int fps_frames = 0;
+
 	while (!quit)
 	{
 		SDL_Event event;
@@ -506,6 +510,19 @@ int main(int argc, char** argv)
 		// Let SDL scale the low-res render up to the window in one pass.
 		SDL_BlitScaled(backbuf, NULL, screen, NULL);
 		SDL_UpdateWindowSurface(window);
+
+		// Show the frame rate in the title bar, refreshed about twice a second.
+		++fps_frames;
+		Uint64 now = SDL_GetPerformanceCounter();
+		double elapsed = double(now - fps_timer) / perf_freq;
+		if (elapsed >= 0.5)
+		{
+			char title[64];
+			snprintf(title, sizeof(title), "mirrorhouse - %.1f FPS", fps_frames / elapsed);
+			SDL_SetWindowTitle(window, title);
+			fps_frames = 0;
+			fps_timer = now;
+		}
 	}
 
 	SDL_DestroyWindow(window);
