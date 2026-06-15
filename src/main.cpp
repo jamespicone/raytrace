@@ -427,7 +427,8 @@ void changeDisplay(SDL_Surface* screen, unsigned int width, unsigned int height)
 int main(int argc, char** argv)
 {
 	SDL_Window* window;
-    SDL_Surface* screen;
+	SDL_Renderer* renderer;
+	SDL_Texture* texture;
 	SDL_Surface* backbuf;
 
     /* Initialize the SDL library */
@@ -450,10 +451,19 @@ int main(int argc, char** argv)
         fprintf(stderr, "Couldn't create window: %s\n", SDL_GetError());
         exit(1);
     }
-	screen = SDL_GetWindowSurface(window);
+	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if ( renderer == NULL ) {
+        fprintf(stderr, "Couldn't create renderer: %s\n", SDL_GetError());
+        exit(1);
+    }
+
+	// The texture format must match the backbuf surface so the per-frame
+	// upload is a straight copy with no conversion.
+	Uint32 pixel_format = SDL_MasksToPixelFormatEnum(32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
+	texture = SDL_CreateTexture(renderer, pixel_format, SDL_TEXTUREACCESS_STREAMING, backbuf_width, backbuf_height);
 	backbuf = SDL_CreateRGBSurface(0, backbuf_width, backbuf_height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
-    if ( screen == NULL ) {
-        fprintf(stderr, "Couldn't get window surface: %s\n", SDL_GetError());
+    if ( texture == NULL || backbuf == NULL ) {
+        fprintf(stderr, "Couldn't create render texture: %s\n", SDL_GetError());
         exit(1);
     }
 
@@ -507,9 +517,10 @@ int main(int argc, char** argv)
 		updateGeometry();
 		changeDisplay(backbuf, backbuf_width, backbuf_height);
 
-		// Let SDL scale the low-res render up to the window in one pass.
-		SDL_BlitScaled(backbuf, NULL, screen, NULL);
-		SDL_UpdateWindowSurface(window);
+		// Upload the low-res frame and let the GPU scale it to the window.
+		SDL_UpdateTexture(texture, NULL, backbuf->pixels, backbuf->pitch);
+		SDL_RenderCopy(renderer, texture, NULL, NULL);
+		SDL_RenderPresent(renderer);
 
 		// Show the frame rate in the title bar, refreshed about twice a second.
 		++fps_frames;
@@ -525,6 +536,9 @@ int main(int argc, char** argv)
 		}
 	}
 
+	SDL_FreeSurface(backbuf);
+	SDL_DestroyTexture(texture);
+	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	return 0;
