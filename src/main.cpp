@@ -428,7 +428,6 @@ int main(int argc, char** argv)
 {
 	SDL_Window* window;
     SDL_Surface* screen;
-	SDL_Surface* screen_backbuf;
 	SDL_Surface* backbuf;
 
     /* Initialize the SDL library */
@@ -444,9 +443,6 @@ int main(int argc, char** argv)
 	unsigned int backbuf_width = 320;
 	unsigned int backbuf_height = 240;
 
-	int scale_width = width / backbuf_width;
-	int scale_height = height / backbuf_height;
-
 	window = SDL_CreateWindow("mirrorhouse",
 		SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
 		width, height, 0);
@@ -455,7 +451,6 @@ int main(int argc, char** argv)
         exit(1);
     }
 	screen = SDL_GetWindowSurface(window);
-	screen_backbuf = SDL_CreateRGBSurface(0, width, height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
 	backbuf = SDL_CreateRGBSurface(0, backbuf_width, backbuf_height, 32, 0xff000000, 0x00ff0000, 0x0000ff00, 0);
     if ( screen == NULL ) {
         fprintf(stderr, "Couldn't get window surface: %s\n", SDL_GetError());
@@ -507,37 +502,9 @@ int main(int argc, char** argv)
 	
 		updateGeometry();
 		changeDisplay(backbuf, backbuf_width, backbuf_height);
-		
-		if (SDL_MUSTLOCK(screen_backbuf)) {SDL_LockSurface(screen_backbuf);}
-		if (SDL_MUSTLOCK(backbuf)) {SDL_LockSurface(backbuf);}
-		
-		uint32_t* source = (uint32_t*)backbuf->pixels;
-		uint32_t* dest = (uint32_t*)screen_backbuf->pixels;
 
-		for (unsigned int i = 0; i < backbuf_height; ++i)
-		{
-			for (unsigned int j = 0; j < backbuf_width; ++j)
-			{
-				for (int n = 0; n < scale_width; ++n)
-				{
-					for (int m = 0; m < scale_height; ++m)
-					{
-						dest[m * width] = *source;
-					}
-
-					++dest;
-				}
-				
-				++source;
-			}
-			
-			dest += width * (scale_height - 1);
-		}
-		
-		if (SDL_MUSTLOCK(backbuf)) {SDL_UnlockSurface(backbuf);}
-		if (SDL_MUSTLOCK(screen_backbuf)) {SDL_UnlockSurface(screen_backbuf);}
-		
-		SDL_BlitSurface(screen_backbuf, NULL, screen, NULL);
+		// Let SDL scale the low-res render up to the window in one pass.
+		SDL_BlitScaled(backbuf, NULL, screen, NULL);
 		SDL_UpdateWindowSurface(window);
 	}
 
