@@ -17,17 +17,17 @@ public:
 	Colour colour;
 	
 	bool reflective;
-	double reflectivity;
+	float reflectivity;
 	
 	bool invisible;
 	
 	bool glows;
 	
 	Triangle();
-	Triangle(const Vector& _v0, const Vector& _v1, const Vector& _v2, Colour _colour, bool reflective = false, double _reflectivity = 0, bool invisible = false, bool glows = false);
+	Triangle(const Vector& _v0, const Vector& _v1, const Vector& _v2, Colour _colour, bool reflective = false, float _reflectivity = 0, bool invisible = false, bool glows = false);
 	Triangle(const Triangle& t);
-	
-	bool getIntersection(const Ray& ray, Vector& ret, double& t, Colour& colour);
+
+	bool getIntersection(const Ray& ray, Vector& ret, float& t, Colour& colour);
 	const Vector& getNormal() const;
 	
 private:

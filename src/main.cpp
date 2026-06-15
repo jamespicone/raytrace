@@ -111,7 +111,7 @@ void createGeometry()
 			Vector(250, 0, 250),
 			0x33222200u,
 			true,
-			0.1
+			0.1f
 		)
 	);
 	
@@ -122,7 +122,7 @@ void createGeometry()
 			Vector(-250, 0, -250),
 			0x33222200u,
 			true,
-			0.1
+			0.1f
 		)
 	);
 	
@@ -190,7 +190,7 @@ void createGeometry()
 			Vector(50, 0, 240),
 			0x0000ff00u,
 			true,
-			0.9
+			0.9f
 		)
 	);
 	
@@ -201,7 +201,7 @@ void createGeometry()
 			Vector(50, 0, 240),
 			0x0000ff00u,
 			true,
-			0.9
+			0.9f
 		)
 	);
 	
@@ -248,7 +248,11 @@ void createGeometry()
 
 void updateGeometry()
 {
-	move += Vector(x_accel * cos(theta) - z_accel * sin(theta), 0, x_accel * sin(theta) + z_accel * cos(theta))*5;
+	move += Vector(
+		static_cast<float>(x_accel * cos(theta) - z_accel * sin(theta)),
+		0,
+		static_cast<float>(x_accel * sin(theta) + z_accel * cos(theta))
+	) * 5;
 }
 
 double getLighting(const Vector& loc, const Vector& normal, bool reflected = false)
@@ -266,7 +270,7 @@ double getLighting(const Vector& loc, const Vector& normal, bool reflected = fal
 		ray.start = loc + normal_vec;
 
 		bool hit = false;
-		double t;
+		float t;
 		Colour colour;
 		
 		for (auto i = geometry.begin(); i != geometry.end(); ++i)
@@ -288,15 +292,15 @@ double getLighting(const Vector& loc, const Vector& normal, bool reflected = fal
 
 bool getClosestIntersect(const Ray& ray, Colour& colour, int reflectcount = 0, double l_factor = 1)
 {
-	double closest_t = DBL_MAX;
+	float closest_t = FLT_MAX;
 	Vector loc;
 	Vector new_loc;
 	Vector normal;
-	double t;
+	float t;
 	Colour new_colour;
 	bool ret = false;
 	bool reflective = false;
-	double reflectivity = 0;
+	float reflectivity = 0;
 	bool glows = false;
 	
 	for (auto i = geometry.begin(); i != geometry.end(); ++i)
@@ -353,7 +357,7 @@ bool getClosestIntersect(const Ray& ray, Colour& colour, int reflectcount = 0, d
 
 void changeDisplay(SDL_Surface* screen, unsigned int width, unsigned int height)
 {
-	double dist = 3;
+	float dist = 3;
 	Vector origin = Vector(0, -250, -240) + move;
 	Ray ray = Ray(origin, Vector(0, 0, 0));
 	Vector forward = Vector(0, 0, dist);
@@ -382,7 +386,7 @@ void changeDisplay(SDL_Surface* screen, unsigned int width, unsigned int height)
 			uint32_t* row = pixels + i * width;
 			for (unsigned int j = 0; j < width; ++j)
 			{
-				local_ray.direction = right * ((j / double(width - 1)) - 0.5) + up * ((i / double(height - 1)) - 0.5) + forward;
+				local_ray.direction = right * (j / float(width - 1) - 0.5f) + up * (i / float(height - 1) - 0.5f) + forward;
 				local_ray.direction.normalise();
 
 				if (!getClosestIntersect(local_ray, colour)) {colour = 0x00000000u;}
