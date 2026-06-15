@@ -7,6 +7,7 @@
 
 #include <cfloat>
 #include <cmath>
+#include <thread>
 #include <vector>
 
 #ifndef M_PI
@@ -367,24 +368,55 @@ void changeDisplay(SDL_Surface* screen, unsigned int width, unsigned int height)
 	up.rotateAroundY(theta);
 	right.rotateAroundY(theta);
 	
-	Colour colour;
-	
 	if (SDL_MUSTLOCK(screen)) {SDL_LockSurface(screen);}
 	uint32_t* pixels = (uint32_t*) screen->pixels;
-	
-	for (unsigned int i = 0; i < height; ++i)
+
+	// Rendering each pixel is independent, so split the rows across threads.
+	auto renderRows = [&](unsigned int y0, unsigned int y1)
 	{
-		for (unsigned int j = 0; j < width; ++j)
+		Ray local_ray = ray;
+		Colour colour;
+
+		for (unsigned int i = y0; i < y1; ++i)
 		{
-			ray.direction = right * ((j / double(width - 1)) - 0.5) + up * ((i / double(height - 1)) - 0.5) + forward;
-			ray.direction.normalise();
-			
-			if (!getClosestIntersect(ray, colour)) {colour = 0x00000000u;}
-			
-			*pixels++ = colour.convertTo32();
+			uint32_t* row = pixels + i * width;
+			for (unsigned int j = 0; j < width; ++j)
+			{
+				local_ray.direction = right * ((j / double(width - 1)) - 0.5) + up * ((i / double(height - 1)) - 0.5) + forward;
+				local_ray.direction.normalise();
+
+				if (!getClosestIntersect(local_ray, colour)) {colour = 0x00000000u;}
+
+				row[j] = colour.convertTo32();
+			}
 		}
+	};
+
+	unsigned int num_threads = std::thread::hardware_concurrency();
+	if (num_threads == 0) {num_threads = 1;}
+	if (num_threads > height) {num_threads = height;}
+
+	std::vector<std::thread> threads;
+	threads.reserve(num_threads - 1);
+
+	unsigned int rows_per = height / num_threads;
+	unsigned int extra = height % num_threads;
+	unsigned int y = 0;
+
+	for (unsigned int t = 0; t < num_threads; ++t)
+	{
+		unsigned int rows = rows_per + (t < extra ? 1 : 0);
+		unsigned int y0 = y;
+		unsigned int y1 = y + rows;
+		y = y1;
+
+		// Run the final chunk on the calling thread to avoid an idle wait.
+		if (t + 1 == num_threads) {renderRows(y0, y1);}
+		else {threads.emplace_back(renderRows, y0, y1);}
 	}
-	
+
+	for (auto& th : threads) {th.join();}
+
 	if (SDL_MUSTLOCK(screen)) {SDL_UnlockSurface(screen);}
 }
 
