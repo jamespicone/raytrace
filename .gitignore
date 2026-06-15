@@ -10,3 +10,9 @@ Release/
 .vs/
 *.suo
 *.user
+
+# CMake build output
+build/
+[Bb]uild*/
+CMakeCache.txt
+CMakeFiles/
